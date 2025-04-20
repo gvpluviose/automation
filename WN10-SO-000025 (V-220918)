@@ -1,0 +1,44 @@
+<#
+.SYNOPSIS
+    Renames the built-in Guest account to a custom name.
+
+.DESCRIPTION
+    Implements STIG WN10-SO-000025 (V-220918) by renaming the default Guest account
+    to a non-default name to reduce attack surface.
+
+.NOTES
+    Author      : Gervaisson Pluviose
+    Created     : 2025-04-20
+    Requirement : Must be run as Administrator
+    Reference   : STIG WN10-SO-000025 / V-220918
+#>
+
+# Ensure script is run as Administrator
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
+    [Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Write-Host "❌ Please run this script as Administrator." -ForegroundColor Red
+    exit
+}
+
+# Define the new name for the guest account
+$newGuestName = "Guest_Disabled"
+
+Write-Host "🔐 Renaming Guest account to '$newGuestName'..." -ForegroundColor Cyan
+
+# Get the Guest account
+$guest = Get-LocalUser | Where-Object { $_.SID -like '*-501' }
+
+if ($guest) {
+    if ($guest.Name -ne $newGuestName) {
+        try {
+            Rename-LocalUser -Name $guest.Name -NewName $newGuestName
+            Write-Host "✅ Guest account renamed to '$newGuestName'." -ForegroundColor Green
+        } catch {
+            Write-Host "❌ Error renaming Guest account: $_" -ForegroundColor Red
+        }
+    } else {
+        Write-Host "ℹ️ Guest account is already renamed to '$newGuestName'." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "❌ Could not find the built-in Guest account (SID ending in -501)." -ForegroundColor Red
+}
