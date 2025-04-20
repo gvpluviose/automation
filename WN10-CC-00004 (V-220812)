@@ -1,0 +1,47 @@
+<#
+.SYNOPSIS
+    Disables Internet Connection Sharing on DNS domain networks.
+
+.DESCRIPTION
+    Fixes STIG WN10-CC-000044 by enabling the group policy that prohibits
+    Internet Connection Sharing on domain networks via the registry.
+
+.NOTES
+    Author      : Gervaisson Pluviose
+    Created     : 2025-04-20
+    Must be run : As Administrator
+    Reference   : STIG WN10-CC-000044 / V-220812
+#>
+
+# Ensure running as Administrator
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
+    [Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Host "❌ Please run this script as Administrator." -ForegroundColor Red
+    exit
+}
+
+Write-Host "`n🔧 Disabling Internet Connection Sharing on DNS domain networks..." -ForegroundColor Yellow
+
+# Registry path for the setting
+$regPath = "HKLM:\Software\Policies\Microsoft\Windows\Network Connections"
+$regName = "NC_ShowSharedAccessUI"
+$regValue = 0
+
+# Create the key if it doesn’t exist
+if (-not (Test-Path $regPath)) {
+    New-Item -Path $regPath -Force | Out-Null
+}
+
+# Set the policy value
+New-ItemProperty -Path $regPath -Name $regName -Value $regValue -PropertyType DWORD -Force | Out-Null
+
+# Confirm the setting
+$currentValue = Get-ItemPropertyValue -Path $regPath -Name $regName
+if ($currentValue -eq $regValue) {
+    Write-Host "✅ Internet Connection Sharing is now disabled on DNS domain networks." -ForegroundColor Green
+} else {
+    Write-Host "❌ Failed to apply the policy." -ForegroundColor Red
+}
+
+Write-Host "`n📎 Registry path: $regPath" -ForegroundColor Cyan
+Write-Host "🔒 Policy Name: Prohibit use of Internet Connection Sharing on your DNS domain network"
