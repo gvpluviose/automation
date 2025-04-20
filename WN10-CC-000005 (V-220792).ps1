@@ -1,54 +1,49 @@
 <#
 .SYNOPSIS
-    Disables the camera on the Windows lock screen to comply with STIG requirement WN10-CC-000005 (V-220792).
+    Disables the camera on the Windows 10 lock screen.
 
 .DESCRIPTION
-    This script configures the system to prevent access to the camera on the lock screen by setting 
-    the 'NoLockScreenCamera' registry value to 1 under:
-        HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization
-
-    This helps meet the DISA STIG compliance requirement for securing the Windows lock screen.
+    This script modifies the Windows Registry to prevent users from accessing the camera 
+    from the lock screen. This setting is required for compliance with STIG vulnerability 
+    ID: V-220792 (WN10-CC-000005).
 
 .NOTES
     Author      : Gervaisson Pluviose
-    Date        : 2025-04-20
-    OS          : Windows 10
-    STIG ID     : WN10-CC-000005
-    Vuln ID     : V-220792
-    Fix Version : 1.0
-
-    Run this script with administrator privileges.
-
-.EXAMPLE
-    PS C:\> .\Disable-LockScreenCamera.ps1
-
-    Applies the lock screen camera restriction immediately.
+    Created     : 2025-04-20
+    Last Updated: 2025-04-20
+    OS Support  : Windows 10
+    Requirement : Run as Administrator
 #>
 
-# Ensure the script is running as Administrator
-if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)) {
-    Write-Warning "You must run this script as an Administrator."
-    exit 1
+# Ensure script is running as Administrator
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
+    [Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Write-Host "This script must be run as Administrator." -ForegroundColor Red
+    exit
 }
 
-$registryPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization"
-$propertyName = "NoLockScreenCamera"
-$propertyValue = 1
+Write-Host "Starting configuration to disable lock screen camera..." -ForegroundColor Cyan
 
-# Create the registry key if it doesn't exist
-if (-not (Test-Path $registryPath)) {
-    Write-Output "Creating registry path: $registryPath"
-    New-Item -Path $registryPath -Force | Out-Null
+$regPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization"
+$regName = "NoLockScreenCamera"
+$regValue = 1
+
+# Create registry path if it doesn't exist
+if (-not (Test-Path $regPath)) {
+    Write-Host "Creating registry path: $regPath" -ForegroundColor Yellow
+    New-Item -Path $regPath -Force | Out-Null
 }
 
 # Set the registry value
-Write-Output "Setting '$propertyName' to '$propertyValue' under '$registryPath'"
-Set-ItemProperty -Path $registryPath -Name $propertyName -Value $propertyValue -Type DWord
+Write-Host "Setting '$regName' to '$regValue' at $regPath" -ForegroundColor Yellow
+Set-ItemProperty -Path $regPath -Name $regName -Value $regValue -Type DWord
 
-# Confirm the value was set
-$currentValue = Get-ItemPropertyValue -Path $registryPath -Name $propertyName
-if ($currentValue -eq $propertyValue) {
-    Write-Output "Success: Camera access on the lock screen has been disabled."
+# Confirm the setting
+$confirm = Get-ItemProperty -Path $regPath -Name $regName
+if ($confirm.$regName -eq $regValue) {
+    Write-Host "✅ Lock screen camera has been successfully disabled." -ForegroundColor Green
 } else {
-    Write-Warning "Failed to apply setting. Current value is $currentValue."
+    Write-Host "❌ Failed to apply the setting. Please check permissions and try again." -ForegroundColor Red
 }
+
+Write-Host "You may need to restart the system or log off/log on for the change to take effect." -ForegroundColor Cyan
