@@ -1,0 +1,49 @@
+<#
+.SYNOPSIS
+    Enables PowerShell Transcription for audit and security purposes.
+
+.DESCRIPTION
+    Implements STIG WN10-CC-000327 (V-220864) by configuring registry keys
+    to turn on PowerShell Transcription and specify a secure log output path.
+
+.NOTES
+    Author      : Gervaisson Pluviose
+    Created     : 2025-04-20
+    Requirement : Must be run as Administrator
+    Reference   : STIG WN10-CC-000327 / V-220864
+#>
+
+# Check if running as admin
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
+    [Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Write-Host "❌ Please run this script as Administrator." -ForegroundColor Red
+    exit
+}
+
+Write-Host "⚙️ Enabling PowerShell Transcription..." -ForegroundColor Cyan
+
+# Configuration
+$regPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription"
+$transcriptPath = "\\YourSecureServer\PSLogs"  # 🔒 Change to your secure central log server path
+
+# Create registry path if needed
+if (-not (Test-Path $regPath)) {
+    Write-Host "📁 Creating registry path: $regPath" -ForegroundColor Yellow
+    New-Item -Path $regPath -Force | Out-Null
+}
+
+# Set registry values
+Set-ItemProperty -Path $regPath -Name "EnableTranscripting" -Value 1 -Type DWord
+Set-ItemProperty -Path $regPath -Name "IncludeInvocationHeader" -Value 1 -Type DWord
+Set-ItemProperty -Path $regPath -Name "OutputDirectory" -Value $transcriptPath -Type String
+
+# Confirm changes
+$confirm = Get-ItemProperty -Path $regPath
+if ($confirm.EnableTranscripting -eq 1 -and $confirm.OutputDirectory -eq $transcriptPath) {
+    Write-Host "✅ PowerShell Transcription enabled." -ForegroundColor Green
+    Write-Host "📂 Logs will be written to: $transcriptPath" -ForegroundColor Yellow
+} else {
+    Write-Host "❌ Failed to configure PowerShell Transcription." -ForegroundColor Red
+}
+
+Write-Host "ℹ️ Run 'gpupdate /force' or restart for policy to take full effect." -ForegroundColor Cyan
